@@ -398,3 +398,20 @@ func main() {
 	fmt.Println("Server running at http://localhost:8000")
 	http.ListenAndServe(":8000", mux)
 }
+
+// getBoardStateFromRequest takes in an http.Request and returns the board state as a 3x3 string array.
+// It does this by parsing the "board" query parameter, if it exists.
+// If the parameter does not exist, it returns a blank 3x3 string array.
+func getBoardStateFromRequest(r *http.Request) [3][3]string {
+	board := [3][3]string{}
+	boardParam := r.URL.Query().Get("board")
+	if boardParam != "" {
+		boardSlice := []rune(boardParam)
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 3; j++ {
+				board[i][j] = string(boardSlice[i*3+j])
+			}
+		}
+	}
+	return board
+}
