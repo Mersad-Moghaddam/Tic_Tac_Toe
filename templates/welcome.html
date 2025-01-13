@@ -65,14 +65,36 @@
             font-size: 14px;
             color: #fff;
         }
-        /* Removed header styles */
+        .description {
+            border: 2px solid #333;
+            padding: 20px;
+            border-radius: 10px;
+            background: #f9f9f9;
+            text-align: left;
+        }
+        .description ul {
+            list-style: none;
+            padding: 0;
+        }
+        .description ul li {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
     <!-- Removed header element -->
     <div class="container">
         <h1>Welcome to Tic Tac Toe</h1>
-        <p>This project is a simple web-based Tic Tac Toe game built with Go and HTML/CSS.</p>
+        <div class="description">
+            <p>🎮✨ This project is a web-based Tic Tac Toe game built with Go and HTML/CSS. It features an AI agent with multiple difficulty levels:</p>
+            <ul>
+                <li>🟢 <strong>Easy</strong>: The AI makes random moves for a chill game.</li>
+                <li>🟡 <strong>Normal</strong>: The AI defends itself by blocking your winning moves.</li>
+                <li>🔴 <strong>Hard</strong>: The AI uses the Minimax Algorithm to make optimal moves.</li>
+                <li>🏆 <strong>Impossible</strong>: The AI becomes unbeatable with Alpha-Beta Pruning!</li>
+            </ul>
+            <p>Enjoy playing, and good luck beating the Impossible AI! 😏</p>
+        </div>
         <button onclick="window.location.href='/game'">Start Game</button>
         <button class="shiny-button" onclick="window.location.href='/agent'">Play with Agent007</button>
         <footer>Created by Mersad</footer>
