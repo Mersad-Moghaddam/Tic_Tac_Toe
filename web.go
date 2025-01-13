@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// Difficulty levels for the agent
 type Difficulty string
 
 const (
@@ -18,8 +19,6 @@ const (
 	Hard       Difficulty = "hard"
 	Impossible Difficulty = "impossible"
 )
-
-var currentDifficulty Difficulty
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -63,11 +62,9 @@ func calculateAgentMove(board [3][3]string, difficulty Difficulty) Move {
 	case Easy:
 		return randomMove(board)
 	case Normal:
-		row, col := normalMove(board)
-		return Move{Row: row, Col: col}
+		return normalMove(board)
 	case Hard:
-		row, col := hardMove(board)
-		return Move{Row: row, Col: col}
+		return hardMove(board)
 	case Impossible:
 		return unbeatableMove(board)
 	default:
@@ -94,17 +91,91 @@ func randomMove(board [3][3]string) Move {
 }
 
 // Basic strategy for Normal difficulty
-func normalMove(board [3][3]string) (int, int) {
-	// Implement a basic strategy for normal difficulty
-	// For simplicity, this example uses randomMove
-	return randomMove(board).Row, randomMove(board).Col
+func normalMove(board [3][3]string) Move {
+	return blockingStrategyMove(board, "O", "X")
 }
 
-// Advanced strategy for Hard difficulty
-func hardMove(board [3][3]string) (int, int) {
-	// Implement a more advanced strategy for hard difficulty
-	// For simplicity, this example uses randomMove
-	return randomMove(board).Row, randomMove(board).Col
+// Blocking strategy for Normal difficulty
+func blockingStrategyMove(board [3][3]string, _, opponentSymbol string) Move {
+	// Check rows, columns, and diagonals for blocking opportunities
+	for i := 0; i < 3; i++ {
+		// Check rows
+		if countSymbols(opponentSymbol, []string{board[i][0], board[i][1], board[i][2]}) == 2 &&
+			countSymbols("", []string{board[i][0], board[i][1], board[i][2]}) == 1 {
+			return findEmptyCellInLine(board, [][2]int{{i, 0}, {i, 1}, {i, 2}})
+		}
+
+		// Check columns
+		if countSymbols(opponentSymbol, []string{board[0][i], board[1][i], board[2][i]}) == 2 &&
+			countSymbols("", []string{board[0][i], board[1][i], board[2][i]}) == 1 {
+			return findEmptyCellInLine(board, [][2]int{{0, i}, {1, i}, {2, i}})
+		}
+	}
+
+	// Check diagonals
+	diagonals := [][][2]int{
+		{{0, 0}, {1, 1}, {2, 2}},
+		{{0, 2}, {1, 1}, {2, 0}},
+	}
+	for _, diagonal := range diagonals {
+		if countSymbolsInLine(board, diagonal, opponentSymbol) == 2 &&
+			countSymbolsInLine(board, diagonal, "") == 1 {
+			return findEmptyCellInLine(board, diagonal)
+		}
+	}
+
+	// If no blocking move, return random
+	return randomMove(board)
+}
+
+// Helper functions
+func countSymbols(symbol string, cells []string) int {
+	count := 0
+	for _, cell := range cells {
+		if cell == symbol {
+			count++
+		}
+	}
+	return count
+}
+
+func countSymbolsInLine(board [3][3]string, line [][2]int, symbol string) int {
+	count := 0
+	for _, coord := range line {
+		if board[coord[0]][coord[1]] == symbol {
+			count++
+		}
+	}
+	return count
+}
+
+func findEmptyCellInLine(board [3][3]string, line [][2]int) Move {
+	for _, coord := range line {
+		if board[coord[0]][coord[1]] == "" {
+			return Move{Row: coord[0], Col: coord[1]}
+		}
+	}
+	return Move{-1, -1}
+}
+
+// Advanced strategy for Hard difficulty using Minimax algorithm
+func hardMove(board [3][3]string) Move {
+	bestScore := -1000
+	bestMove := Move{-1, -1}
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			if board[row][col] == "" {
+				board[row][col] = "O" // Agent's move
+				score := minimax(board, 0, false, "O", "X")
+				board[row][col] = ""
+				if score > bestScore {
+					bestScore = score
+					bestMove = Move{Row: row, Col: col}
+				}
+			}
+		}
+	}
+	return bestMove
 }
 
 // Unbeatable strategy for Impossible difficulty using Minimax with Alpha-Beta Pruning
@@ -116,7 +187,7 @@ func unbeatableMove(board [3][3]string) Move {
 		for col := 0; col < 3; col++ {
 			if board[row][col] == "" {
 				board[row][col] = "O" // Agent's move
-				score := minimax(board, 0, false, -1000, 1000)
+				score := minimax(board, 0, false, "O", "X")
 				board[row][col] = ""
 				if score > bestScore {
 					bestScore = score
@@ -130,11 +201,11 @@ func unbeatableMove(board [3][3]string) Move {
 }
 
 // Minimax algorithm with Alpha-Beta Pruning
-func minimax(board [3][3]string, depth int, isMaximizing bool, alpha, beta int) int {
-	if checkWinner(board, "O") {
+func minimax(board [3][3]string, depth int, isMaximizing bool, agentSymbol, opponentSymbol string) int {
+	if checkWinFor(board, agentSymbol) {
 		return 10 - depth
 	}
-	if checkWinner(board, "X") {
+	if checkWinFor(board, opponentSymbol) {
 		return depth - 10
 	}
 	if isBoardFull(board) {
@@ -142,44 +213,36 @@ func minimax(board [3][3]string, depth int, isMaximizing bool, alpha, beta int) 
 	}
 
 	if isMaximizing {
-		maxEval := -1000
+		bestScore := -1000
 		for row := 0; row < 3; row++ {
 			for col := 0; col < 3; col++ {
 				if board[row][col] == "" {
-					board[row][col] = "O"
-					eval := minimax(board, depth+1, false, alpha, beta)
+					board[row][col] = agentSymbol
+					score := minimax(board, depth+1, false, agentSymbol, opponentSymbol)
 					board[row][col] = ""
-					maxEval = max(maxEval, eval)
-					alpha = max(alpha, eval)
-					if beta <= alpha {
-						break
-					}
+					bestScore = max(bestScore, score)
 				}
 			}
 		}
-		return maxEval
+		return bestScore
 	} else {
-		minEval := 1000
+		bestScore := 1000
 		for row := 0; row < 3; row++ {
 			for col := 0; col < 3; col++ {
 				if board[row][col] == "" {
-					board[row][col] = "X"
-					eval := minimax(board, depth+1, true, alpha, beta)
+					board[row][col] = opponentSymbol
+					score := minimax(board, depth+1, true, agentSymbol, opponentSymbol)
 					board[row][col] = ""
-					minEval = min(minEval, eval)
-					beta = min(beta, eval)
-					if beta <= alpha {
-						break
-					}
+					bestScore = min(bestScore, score)
 				}
 			}
 		}
-		return minEval
+		return bestScore
 	}
 }
 
 // Helper functions
-func checkWinner(board [3][3]string, player string) bool {
+func checkWinFor(board [3][3]string, player string) bool {
 	for i := 0; i < 3; i++ {
 		if board[i][0] == player && board[i][1] == player && board[i][2] == player {
 			return true
@@ -222,6 +285,7 @@ func min(a, b int) int {
 	return b
 }
 
+// Load templates
 var tmpl = loadTemplate("templates/index.html")
 var resultTmpl = loadTemplate("templates/result.html")
 var agentTmpl = loadTemplate("templates/agent.html")
@@ -265,6 +329,7 @@ func main() {
 	http.ListenAndServe(":8000", mux)
 }
 
+// Extract board state from request
 func getBoardStateFromRequest(r *http.Request) [3][3]string {
 	board := [3][3]string{}
 	boardParam := r.URL.Query().Get("board")
