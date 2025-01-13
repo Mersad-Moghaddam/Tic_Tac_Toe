@@ -1,3 +1,36 @@
+// This file implements a Tic-Tac-Toe game with an AI agent that can play against a human player.
+// The agent supports multiple difficulty levels: Easy, Normal, Hard, and Impossible.
+// Each difficulty level uses a different strategy to determine the agent's moves.
+//
+// Difficulty Levels and Strategies:
+// 1. Easy: The agent makes random moves, selecting any empty cell on the board.
+// 2. Normal: The agent uses a basic blocking strategy to prevent the opponent from winning.
+//    - It checks rows, columns, and diagonals for any line where the opponent has two symbols and an empty cell.
+//    - If such a line is found, the agent places its symbol in the empty cell to block the opponent.
+//    - If no blocking move is found, the agent makes a random move.
+// 3. Hard: The agent uses the Minimax algorithm to determine the best move.
+//    - The Minimax algorithm evaluates all possible moves and their outcomes to choose the move with the highest score.
+//    - The agent assumes the opponent will also play optimally and tries to maximize its own score while minimizing the opponent's score.
+// 4. Impossible: The agent uses the Minimax algorithm with Alpha-Beta Pruning for optimal performance.
+//    - Alpha-Beta Pruning reduces the number of nodes evaluated by the Minimax algorithm, making it more efficient.
+//    - This strategy ensures the agent plays perfectly and is unbeatable.
+//
+// The agent's move is calculated based on the current board state and the selected difficulty level.
+// The board state is represented as a 3x3 grid, where each cell can be empty or contain a player's symbol ("X" or "O").
+//
+// The `/agent-move` endpoint handles requests to calculate the agent's move.
+// It accepts the current board state and difficulty level as query parameters and returns the agent's move as a JSON response.
+//
+// Helper functions are used to:
+// - Count symbols in a line (row, column, or diagonal).
+// - Find an empty cell in a line.
+// - Check if a player has won.
+// - Check if the board is full.
+// - Implement the Minimax algorithm with Alpha-Beta Pruning.
+//
+// Templates are used to render the game interface and results.
+// The templates are loaded from the `templates` directory and include a footer with the creator's name.
+
 package main
 
 import (
@@ -296,7 +329,7 @@ func loadTemplate(filename string) *template.Template {
 	if err != nil {
 		panic(err)
 	}
-	return template.Must(template.New(filename).Parse(string(content)))
+	return template.Must(template.New(filename).Parse(string(content) + "\n<footer>Created by Mersad</footer>"))
 }
 
 func main() {

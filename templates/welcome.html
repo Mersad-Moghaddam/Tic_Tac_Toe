@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Tic Tac Toe</title>
     <style>
         body {
             display: flex;
@@ -11,10 +10,11 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #ffcc33, #ff6699);
             font-family: Arial, sans-serif;
             margin: 0;
             animation: fadeIn 2s;
+            color: #333;
         }
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -25,7 +25,7 @@
             background: #fff;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
             animation: slideIn 1s;
         }
         @keyframes slideIn {
@@ -63,17 +63,23 @@
         footer {
             margin-top: 20px;
             font-size: 14px;
-            color: #888;
+            color: #fff;
         }
+        /* Removed header styles */
     </style>
 </head>
 <body>
+    <!-- Removed header element -->
     <div class="container">
         <h1>Welcome to Tic Tac Toe</h1>
         <p>This project is a simple web-based Tic Tac Toe game built with Go and HTML/CSS.</p>
         <button onclick="window.location.href='/game'">Start Game</button>
-        <button class="shiny-button" onclick="window.location.href='/agent'">Play with Agent</button>
+        <button class="shiny-button" onclick="window.location.href='/agent'">Play with Agent007</button>
         <footer>Created by Mersad</footer>
     </div>
+    <audio autoplay loop>
+        <source src="/static/music/background.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
 </body>
 </html>

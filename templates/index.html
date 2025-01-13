@@ -11,7 +11,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #ffcc33, #ff6699);
             font-family: Arial, sans-serif;
             margin: 0;
         }
@@ -111,7 +111,7 @@
         const gameBoard = document.getElementById('gameBoard');
         const cells = document.querySelectorAll('[data-cell]');
         let currentPlayer;
-        let player1, player2;
+        let player1, player2 = "Agent007";
 
         const urlParams = new URLSearchParams(window.location.search);
         const difficulty = urlParams.get('difficulty');
@@ -121,7 +121,7 @@
 
         if (isAgentGame) {
             player1 = playerName || "Player";
-            player2 = "Agent";
+            player2 = "Agent007";
             currentPlayer = firstPlayer === 'player' ? player1 : player2;
             playerForm.style.display = 'none';
             gameBoard.style.display = 'grid';

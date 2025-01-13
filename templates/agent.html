@@ -11,16 +11,27 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #ffcc33, #ff6699);
             font-family: Arial, sans-serif;
             margin: 0;
+            color: #333;
+            animation: fadeIn 2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         .container {
             text-align: center;
             background: #fff;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            animation: slideIn 1s;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); }
+            to { transform: translateY(0); }
         }
         .form-group {
             margin-bottom: 15px;
@@ -40,11 +51,13 @@
         footer {
             margin-top: 20px;
             font-size: 14px;
-            color: #888;
+            color: #fff;
         }
+        /* Removed header styles */
     </style>
 </head>
 <body>
+    <!-- Removed header element -->
     <div class="container">
         <h1>Choose Difficulty</h1>
         <form id="difficultyForm">
@@ -56,7 +69,7 @@
                 <label for="firstPlayer">Who plays first:</label>
                 <select id="firstPlayer" name="firstPlayer" required>
                     <option value="player">You</option>
-                    <option value="agent">Agent</option>
+                    <option value="agent">Agent007</option>
                 </select>
             </div>
             <div class="form-group">
@@ -72,6 +85,10 @@
         </form>
         <footer>Created by Mersad</footer>
     </div>
+    <audio autoplay loop>
+        <source src="/static/music/background.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
     <script>
         const difficultyForm = document.getElementById('difficultyForm');
         difficultyForm.addEventListener('submit', function(event) {

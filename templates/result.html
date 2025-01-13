@@ -11,16 +11,29 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #ffcc33, #ff6699);
             font-family: Arial, sans-serif;
             margin: 0;
+            color: #333;
+            animation: fadeIn 2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         .container {
             text-align: center;
             background: #fff;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            animation: slideIn 1s;
+            width: 80%;
+            max-width: 600px;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); }
+            to { transform: translateY(0); }
         }
         button {
             padding: 10px 20px;
@@ -37,22 +50,69 @@
         footer {
             margin-top: 20px;
             font-size: 14px;
-            color: #888;
+            color: #fff;
+        }
+        .winner {
+            font-size: 2em;
+            margin-top: 20px;
+            color: #ff6699;
+            animation: winnerAnimation 1s infinite alternate;
+        }
+        @keyframes winnerAnimation {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+        .celebration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #ffcc33;
+            animation: confettiFall 3s linear infinite;
+        }
+        @keyframes confettiFall {
+            from { transform: translateY(-100vh); }
+            to { transform: translateY(100vh); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Game Result</h1>
-        {{if eq .Winner "Tie"}}
-        <p>It's a tie!</p>
-        {{else}}
-        <p>Winner: {{.Winner}}</p>
-        {{end}}
-        <p>Player 1: {{.Player1}}</p>
-        <p>Player 2: {{.Player2}}</p>
+        <div class="winner">
+            {{if eq .Winner "Tie"}}
+            <p>It's a tie!</p>
+            {{else}}
+            <p>Winner: {{if eq .Winner "Agent"}}Agent007{{else}}{{.Winner}}{{end}}</p>
+            {{end}}
+        </div>
         <button onclick="window.location.href='/'">Play Again</button>
         <footer>Created by Mersad</footer>
     </div>
+    <audio autoplay loop>
+        <source src="/static/music/background.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <div class="celebration" id="celebration"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const celebration = document.getElementById('celebration');
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                celebration.appendChild(confetti);
+            }
+        });
+    </script>
 </body>
 </html>
