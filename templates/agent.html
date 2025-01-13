@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Difficulty</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Choose Difficulty</h1>
+        <form id="difficultyForm">
+            <div class="form-group">
+                <label for="playerName">Your Name:</label>
+                <input type="text" id="playerName" name="playerName" required>
+            </div>
+            <div class="form-group">
+                <label for="firstPlayer">Who plays first:</label>
+                <select id="firstPlayer" name="firstPlayer" required>
+                    <option value="player">You</option>
+                    <option value="agent">Agent</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="difficulty">Select Difficulty:</label>
+                <select id="difficulty" name="difficulty" required>
+                    <option value="easy">Easy</option>
+                    <option value="normal">Normal</option>
+                    <option value="hard">Hard</option>
+                    <option value="impossible">Impossible</option>
+                </select>
+            </div>
+            <button type="submit">Let's Go</button>
+        </form>
+        <footer>Created by Mersad</footer>
+    </div>
+    <script>
+        const difficultyForm = document.getElementById('difficultyForm');
+        difficultyForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const playerName = document.getElementById('playerName').value;
+            const firstPlayer = document.getElementById('firstPlayer').value;
+            const difficulty = document.getElementById('difficulty').value;
+            window.location.href = '/game?difficulty=' + difficulty + '&playerName=' + playerName + '&firstPlayer=' + firstPlayer;
+        });
+    </script>
+</body>
+</html>

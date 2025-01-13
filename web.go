@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -23,522 +25,112 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-var tmpl = template.Must(template.New("index").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tic Tac Toe</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-            margin: 0;
-        }
-        .container {
-            text-align: center;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-template-rows: repeat(3, 100px);
-            gap: 5px;
-            margin-top: 20px;
-        }
-        .cell {
-            width: 100px;
-            height: 100px;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .cell:hover {
-            background-color: #e0e0e0;
-        }
-        .cell.x {
-            color: red;
-        }
-        .cell.o {
-            color: green;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        footer {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #888;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Tic Tac Toe</h1>
-        <form id="playerForm">
-            <div class="form-group">
-                <label for="player1">Player 1 Name:</label>
-                <input type="text" id="player1" name="player1" required>
-            </div>
-            <div class="form-group">
-                <label for="player2">Player 2 Name:</label>
-                <input type="text" id="player2" name="player2" required>
-            </div>
-            <div class="form-group">
-                <label for="firstPlayer">Who plays first:</label>
-                <select id="firstPlayer" name="firstPlayer" required>
-                    <option value="player1">Player 1</option>
-                    <option value="player2">Player 2</option>
-                </select>
-            </div>
-            <button type="submit">Start Game</button>
-        </form>
-        <div class="game-board" id="gameBoard" style="display: none;">
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-            <div class="cell" data-cell></div>
-        </div>
-        <footer>Created by Mersad</footer>
-    </div>
-    <script>
-        const playerForm = document.getElementById('playerForm');
-        const gameBoard = document.getElementById('gameBoard');
-        const cells = document.querySelectorAll('[data-cell]');
-        let currentPlayer;
-        let player1, player2;
+// Represents a move made by the agent
+type Move struct {
+	Row int `json:"row"`
+	Col int `json:"col"`
+}
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const difficulty = urlParams.get('difficulty');
-        const playerName = urlParams.get('playerName');
-        const firstPlayer = urlParams.get('firstPlayer');
-        let isAgentGame = difficulty !== null;
+// Handles the `/agent-move` endpoint
+func agentMoveHandler(w http.ResponseWriter, r *http.Request) {
+	difficulty := Difficulty(r.URL.Query().Get("difficulty"))
+	boardParam := r.URL.Query().Get("board")
+	if boardParam == "" {
+		http.Error(w, "Board state is required", http.StatusBadRequest)
+		return
+	}
 
-        if (isAgentGame) {
-            player1 = playerName || "Player";
-            player2 = "Agent";
-            currentPlayer = firstPlayer === 'player' ? player1 : player2;
-            playerForm.style.display = 'none';
-            gameBoard.style.display = 'grid';
-            if (currentPlayer === player2) {
-                setTimeout(agentMove, 500);
-            }
-        } else {
-            playerForm.addEventListener('submit', function(event) {
-                event.preventDefault();
-                player1 = document.getElementById('player1').value;
-                player2 = document.getElementById('player2').value;
-                const firstPlayer = document.getElementById('firstPlayer').value;
-                currentPlayer = firstPlayer === 'player1' ? player1 : player2;
-                playerForm.style.display = 'none';
-                gameBoard.style.display = 'grid';
-            });
-        }
+	var board [3][3]string
+	if err := json.Unmarshal([]byte(boardParam), &board); err != nil {
+		http.Error(w, "Invalid board state", http.StatusBadRequest)
+		return
+	}
 
-        cells.forEach(cell => {
-            cell.addEventListener('click', handleClick, { once: true });
-        });
+	move := calculateAgentMove(board, difficulty)
+	response, err := json.Marshal(move)
+	if err != nil {
+		http.Error(w, "Failed to calculate move", http.StatusInternalServerError)
+		return
+	}
 
-        function handleClick(e) {
-            const cell = e.target;
-            if (cell.textContent !== '') return; // Prevent choosing an already chosen cell
-            cell.textContent = currentPlayer === player1 ? 'X' : 'O';
-            cell.classList.add(currentPlayer === player1 ? 'x' : 'o');
-            if (checkWin()) {
-                setTimeout(() => {
-                    alert(currentPlayer + ' wins!');
-                    window.location.href = '/result?winner=' + currentPlayer + '&player1=' + player1 + '&player2=' + player2;
-                }, 100);
-            } else if (isBoardFull()) {
-                setTimeout(() => {
-                    alert('It\'s a tie!');
-                    window.location.href = '/result?winner=Tie&player1=' + player1 + '&player2=' + player2;
-                }, 100);
-            } else {
-                currentPlayer = currentPlayer === player1 ? player2 : player1;
-                if (isAgentGame && currentPlayer === player2) {
-                    setTimeout(agentMove, 500);
-                }
-            }
-        }
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
 
-        function agentMove() {
-            fetch('/agent-move?difficulty=' + difficulty + '&board=' + JSON.stringify(getBoardState()))
-                .then(response => response.json())
-                .then(data => {
-                    const cellIndex = data.row * 3 + data.col;
-                    const cell = cells[cellIndex];
-                    cell.textContent = 'O';
-                    cell.classList.add('o');
-                    if (checkWin()) {
-                        setTimeout(() => {
-                            alert(player2 + ' wins!');
-                            window.location.href = '/result?winner=' + player2 + '&player1=' + player1 + '&player2=' + player2;
-                        }, 100);
-                    } else if (isBoardFull()) {
-                        setTimeout(() => {
-                            alert('It\'s a tie!');
-                            window.location.href = '/result?winner=Tie&player1=' + player1 + '&player2=' + player2;
-                        }, 100);
-                    } else {
-                        currentPlayer = player1;
-                    }
-                });
-        }
-
-        function getBoardState() {
-            const board = [['', '', ''], ['', '', ''], ['', '', '']];
-            cells.forEach((cell, index) => {
-                const row = Math.floor(index / 3);
-                const col = index % 3;
-                board[row][col] = cell.textContent;
-            });
-            return board;
-        }
-
-        function checkWin() {
-            const winPatterns = [
-                [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-                [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-                [0, 4, 8], [2, 4, 6] // diagonals
-            ];
-            return winPatterns.some(pattern => {
-                return pattern.every(index => {
-                    return cells[index].textContent === (currentPlayer === player1 ? 'X' : 'O');
-                });
-            });
-        }
-
-        function isBoardFull() {
-            return [...cells].every(cell => cell.textContent !== '');
-        }
-    </script>
-</body>
-</html>
-`))
-
-var resultTmpl = template.Must(template.New("result").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Result</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-            margin: 0;
-        }
-        .container {
-            text-align: center;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        footer {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #888;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Game Result</h1>
-        {{if eq .Winner "Tie"}}
-        <p>It's a tie!</p>
-        {{else}}
-        <p>Winner: {{.Winner}}</p>
-        {{end}}
-        <p>Player 1: {{.Player1}}</p>
-        <p>Player 2: {{.Player2}}</p>
-        <button onclick="window.location.href='/'">Play Again</button>
-        <footer>Created by Mersad</footer>
-    </div>
-</body>
-</html>
-`))
-
-var agentTmpl = template.Must(template.New("agent").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Choose Difficulty</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-            margin: 0;
-        }
-        .container {
-            text-align: center;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        footer {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #888;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Choose Difficulty</h1>
-        <form id="difficultyForm">
-            <div class="form-group">
-                <label for="playerName">Your Name:</label>
-                <input type="text" id="playerName" name="playerName" required>
-            </div>
-            <div class="form-group">
-                <label for="firstPlayer">Who plays first:</label>
-                <select id="firstPlayer" name="firstPlayer" required>
-                    <option value="player">You</option>
-                    <option value="agent">Agent</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="difficulty">Select Difficulty:</label>
-                <select id="difficulty" name="difficulty" required>
-                    <option value="easy">Easy</option>
-                    <option value="normal">Normal</option>
-                    <option value="hard">Hard</option>
-                    <option value="impossible">Impossible</option>
-                </select>
-            </div>
-            <button type="submit">Let's Go</button>
-        </form>
-        <footer>Created by Mersad</footer>
-    </div>
-    <script>
-        const difficultyForm = document.getElementById('difficultyForm');
-        difficultyForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const playerName = document.getElementById('playerName').value;
-            const firstPlayer = document.getElementById('firstPlayer').value;
-            const difficulty = document.getElementById('difficulty').value;
-            window.location.href = '/game?difficulty=' + difficulty + '&playerName=' + playerName + '&firstPlayer=' + firstPlayer;
-        });
-    </script>
-</body>
-</html>
-`))
-
-var welcomeTmpl = template.Must(template.New("welcome").Parse(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Tic Tac Toe</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            animation: fadeIn 2s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        .container {
-            text-align: center;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            animation: slideIn 1s;
-        }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); }
-            to { transform: translateY(0); }
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .shiny-button {
-            background: linear-gradient(45deg, #ff0066, #ffcc00);
-            background-size: 200% 200%;
-            animation: shiny 2s linear infinite;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            padding: 10px 20px;
-            transition: background-color 0.3s;
-        }
-        @keyframes shiny {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        footer {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #888;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to Tic Tac Toe</h1>
-        <p>This project is a simple web-based Tic Tac Toe game built with Go and HTML/CSS.</p>
-        <button onclick="window.location.href='/game'">Start Game</button>
-        <button class="shiny-button" onclick="window.location.href='/agent'">Play with Agent</button>
-        <footer>Created by Mersad</footer>
-    </div>
-</body>
-</html>
-`))
-
-func aiMove(board [3][3]string, difficulty Difficulty) (int, int) {
+// Calculate the agent's move based on the difficulty level
+func calculateAgentMove(board [3][3]string, difficulty Difficulty) Move {
 	switch difficulty {
 	case Easy:
 		return randomMove(board)
 	case Normal:
-		return normalMove(board)
+		row, col := normalMove(board)
+		return Move{Row: row, Col: col}
 	case Hard:
-		return hardMove(board)
+		row, col := hardMove(board)
+		return Move{Row: row, Col: col}
 	case Impossible:
-		return impossibleMove(board)
+		return unbeatableMove(board)
 	default:
 		return randomMove(board)
 	}
 }
 
-func randomMove(board [3][3]string) (int, int) {
-	for {
-		row := rand.Intn(3)
-		col := rand.Intn(3)
-		if board[row][col] == "" {
-			return row, col
+// Random move logic for Easy difficulty
+func randomMove(board [3][3]string) Move {
+	var emptyCells []Move
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			if board[row][col] == "" {
+				emptyCells = append(emptyCells, Move{Row: row, Col: col})
+			}
 		}
 	}
+
+	if len(emptyCells) == 0 {
+		return Move{-1, -1} // No available moves
+	}
+
+	return emptyCells[rand.Intn(len(emptyCells))]
 }
 
+// Basic strategy for Normal difficulty
 func normalMove(board [3][3]string) (int, int) {
 	// Implement a basic strategy for normal difficulty
 	// For simplicity, this example uses randomMove
-	return randomMove(board)
+	return randomMove(board).Row, randomMove(board).Col
 }
 
+// Advanced strategy for Hard difficulty
 func hardMove(board [3][3]string) (int, int) {
 	// Implement a more advanced strategy for hard difficulty
 	// For simplicity, this example uses randomMove
-	return randomMove(board)
+	return randomMove(board).Row, randomMove(board).Col
 }
 
-func impossibleMove(board [3][3]string) (int, int) {
-	// Implement an unbeatable strategy for impossible difficulty
-	// For simplicity, this example uses a basic minimax algorithm
+// Unbeatable strategy for Impossible difficulty using Minimax with Alpha-Beta Pruning
+func unbeatableMove(board [3][3]string) Move {
+	var bestMove Move
 	bestScore := -1000
-	var move [2]int
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			if board[i][j] == "" {
-				board[i][j] = "O"
-				score := minimax(board, 0, false)
-				board[i][j] = ""
+
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			if board[row][col] == "" {
+				board[row][col] = "O" // Agent's move
+				score := minimax(board, 0, false, -1000, 1000)
+				board[row][col] = ""
 				if score > bestScore {
 					bestScore = score
-					move = [2]int{i, j}
+					bestMove = Move{Row: row, Col: col}
 				}
 			}
 		}
 	}
-	return move[0], move[1]
+
+	return bestMove
 }
 
-func minimax(board [3][3]string, depth int, isMaximizing bool) int {
+// Minimax algorithm with Alpha-Beta Pruning
+func minimax(board [3][3]string, depth int, isMaximizing bool, alpha, beta int) int {
 	if checkWinner(board, "O") {
 		return 10 - depth
 	}
@@ -550,63 +142,97 @@ func minimax(board [3][3]string, depth int, isMaximizing bool) int {
 	}
 
 	if isMaximizing {
-		bestScore := -1000
-		for i := 0; i < 3; i++ {
-			for j := 0; j < 3; j++ {
-				if board[i][j] == "" {
-					board[i][j] = "O"
-					score := minimax(board, depth+1, false)
-					board[i][j] = ""
-					if score > bestScore {
-						bestScore = score
+		maxEval := -1000
+		for row := 0; row < 3; row++ {
+			for col := 0; col < 3; col++ {
+				if board[row][col] == "" {
+					board[row][col] = "O"
+					eval := minimax(board, depth+1, false, alpha, beta)
+					board[row][col] = ""
+					maxEval = max(maxEval, eval)
+					alpha = max(alpha, eval)
+					if beta <= alpha {
+						break
 					}
 				}
 			}
 		}
-		return bestScore
+		return maxEval
 	} else {
-		bestScore := 1000
-		for i := 0; i < 3; i++ {
-			for j := 0; j < 3; j++ {
-				if board[i][j] == "" {
-					board[i][j] = "X"
-					score := minimax(board, depth+1, true)
-					board[i][j] = ""
-					if score < bestScore {
-						bestScore = score
+		minEval := 1000
+		for row := 0; row < 3; row++ {
+			for col := 0; col < 3; col++ {
+				if board[row][col] == "" {
+					board[row][col] = "X"
+					eval := minimax(board, depth+1, true, alpha, beta)
+					board[row][col] = ""
+					minEval = min(minEval, eval)
+					beta = min(beta, eval)
+					if beta <= alpha {
+						break
 					}
 				}
 			}
 		}
-		return bestScore
+		return minEval
 	}
 }
 
+// Helper functions
 func checkWinner(board [3][3]string, player string) bool {
-	winPatterns := [][3][2]int{
-		{{0, 0}, {0, 1}, {0, 2}}, {{1, 0}, {1, 1}, {1, 2}}, {{2, 0}, {2, 1}, {2, 2}}, // rows
-		{{0, 0}, {1, 0}, {2, 0}}, {{0, 1}, {1, 1}, {2, 1}}, {{0, 2}, {1, 2}, {2, 2}}, // columns
-		{{0, 0}, {1, 1}, {2, 2}}, {{0, 2}, {1, 1}, {2, 0}}, // diagonals
-	}
-	for _, pattern := range winPatterns {
-		if board[pattern[0][0]][pattern[0][1]] == player &&
-			board[pattern[1][0]][pattern[1][1]] == player &&
-			board[pattern[2][0]][pattern[2][1]] == player {
+	for i := 0; i < 3; i++ {
+		if board[i][0] == player && board[i][1] == player && board[i][2] == player {
 			return true
 		}
+		if board[0][i] == player && board[1][i] == player && board[2][i] == player {
+			return true
+		}
+	}
+	if board[0][0] == player && board[1][1] == player && board[2][2] == player {
+		return true
+	}
+	if board[0][2] == player && board[1][1] == player && board[2][0] == player {
+		return true
 	}
 	return false
 }
 
 func isBoardFull(board [3][3]string) bool {
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			if board[i][j] == "" {
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			if board[row][col] == "" {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+var tmpl = loadTemplate("templates/index.html")
+var resultTmpl = loadTemplate("templates/result.html")
+var agentTmpl = loadTemplate("templates/agent.html")
+var welcomeTmpl = loadTemplate("templates/welcome.html")
+
+func loadTemplate(filename string) *template.Template {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	return template.Must(template.New(filename).Parse(string(content)))
 }
 
 func main() {
@@ -633,13 +259,7 @@ func main() {
 		}
 		resultTmpl.Execute(w, data)
 	})
-	mux.HandleFunc("/agent-move", func(w http.ResponseWriter, r *http.Request) {
-		board := getBoardStateFromRequest(r)
-		difficulty := Difficulty(r.URL.Query().Get("difficulty"))
-		row, col := aiMove(board, difficulty)
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"row": %d, "col": %d}`, row, col)
-	})
+	mux.HandleFunc("/agent-move", agentMoveHandler)
 
 	fmt.Println("Server running at http://localhost:8000")
 	http.ListenAndServe(":8000", mux)
@@ -649,9 +269,10 @@ func getBoardStateFromRequest(r *http.Request) [3][3]string {
 	board := [3][3]string{}
 	boardParam := r.URL.Query().Get("board")
 	if boardParam != "" {
-		for i, row := range board {
-			for j := range row {
-				board[i][j] = string(boardParam[i*3+j])
+		boardSlice := []rune(boardParam)
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 3; j++ {
+				board[i][j] = string(boardSlice[i*3+j])
 			}
 		}
 	}
