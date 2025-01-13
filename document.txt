@@ -1,0 +1,189 @@
+### Tic-Tac-Toe Game with AI Agent: Comprehensive Explanation
+
+This document provides an in-depth explanation of the Tic-Tac-Toe game implementation, which includes an AI agent capable of playing at different difficulty levels. Each component, function, and logic in the code is explained to facilitate understanding.
+
+---
+
+### Overview of the Game
+The Tic-Tac-Toe game operates on a 3x3 grid where two players (human and AI) take turns placing their symbols ("X" or "O") on the board. The objective is to align three symbols in a row, column, or diagonal. The AI agent in this implementation can play at four difficulty levels:
+
+1. **Easy**: Random move selection.
+2. **Normal**: Basic blocking strategy to prevent the opponent's win.
+3. **Hard**: Strategic move selection using the Minimax algorithm.
+4. **Impossible**: Perfect play using Minimax with Alpha-Beta Pruning for optimization.
+
+### Key Components
+
+#### 1. **Difficulty Levels**
+Difficulty levels are defined as constants of type `Difficulty`:
+```go
+const (
+    Easy       Difficulty = "easy"
+    Normal     Difficulty = "normal"
+    Hard       Difficulty = "hard"
+    Impossible Difficulty = "impossible"
+)
+```
+These levels determine the strategy used by the AI agent to make its moves.
+
+#### 2. **Agent Move Calculation**
+The `/agent-move` endpoint calculates the AI's next move based on the board state and the selected difficulty level:
+```go
+func agentMoveHandler(w http.ResponseWriter, r *http.Request) {
+    difficulty := Difficulty(r.URL.Query().Get("difficulty"))
+    boardParam := r.URL.Query().Get("board")
+    
+    var board [3][3]string
+    if err := json.Unmarshal([]byte(boardParam), &board); err != nil {
+        http.Error(w, "Invalid board state", http.StatusBadRequest)
+        return
+    }
+
+    move := calculateAgentMove(board, difficulty)
+    response, err := json.Marshal(move)
+    if err != nil {
+        http.Error(w, "Failed to calculate move", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.Write(response)
+}
+```
+
+#### 3. **Move Calculation Based on Difficulty**
+- **Easy:**
+  Randomly selects any empty cell on the board using the `randomMove` function:
+  ```go
+  func randomMove(board [3][3]string) Move {
+      var emptyCells []Move
+      for row := 0; row < 3; row++ {
+          for col := 0; col < 3; col++ {
+              if board[row][col] == "" {
+                  emptyCells = append(emptyCells, Move{Row: row, Col: col})
+              }
+          }
+      }
+      return emptyCells[rand.Intn(len(emptyCells))]
+  }
+  ```
+
+- **Normal:**
+  Implements a blocking strategy to prevent the opponent from winning:
+  ```go
+  func blockingStrategyMove(board [3][3]string, _, opponentSymbol string) Move {
+      // Check rows, columns, and diagonals for blocking opportunities
+      for i := 0; i < 3; i++ {
+          // Rows and columns
+          if countSymbols(opponentSymbol, []string{board[i][0], board[i][1], board[i][2]}) == 2 {
+              return findEmptyCellInLine(board, [][2]int{{i, 0}, {i, 1}, {i, 2}})
+          }
+      }
+      return randomMove(board)
+  }
+  ```
+
+- **Hard:**
+  Uses the Minimax algorithm to evaluate all possible moves and select the best one:
+  ```go
+  func hardMove(board [3][3]string) Move {
+      bestScore := -1000
+      for row := 0; row < 3; row++ {
+          for col := 0; col < 3; col++ {
+              if board[row][col] == "" {
+                  board[row][col] = "O"
+                  score := minimax(board, 0, false, "O", "X")
+                  board[row][col] = ""
+                  if score > bestScore {
+                      bestScore = score
+                  }
+              }
+          }
+      }
+      return bestMove
+  }
+  ```
+
+- **Impossible:**
+  Extends the Hard strategy by optimizing the Minimax algorithm with Alpha-Beta Pruning:
+  ```go
+  func unbeatableMove(board [3][3]string) Move {
+      bestScore := -1000
+      for row := 0; row < 3; row++ {
+          for col := 0; col < 3; col++ {
+              if board[row][col] == "" {
+                  board[row][col] = "O"
+                  score := minimax(board, 0, false, "O", "X")
+                  board[row][col] = ""
+                  if score > bestScore {
+                      bestScore = score
+                  }
+              }
+          }
+      }
+      return bestMove
+  }
+  ```
+
+#### 4. **Minimax Algorithm**
+The Minimax algorithm evaluates all possible outcomes of a move:
+```go
+func minimax(board [3][3]string, depth int, isMaximizing bool, agentSymbol, opponentSymbol string) int {
+    if checkWinFor(board, agentSymbol) {
+        return 10 - depth
+    }
+    if checkWinFor(board, opponentSymbol) {
+        return depth - 10
+    }
+    if isBoardFull(board) {
+        return 0
+    }
+
+    if isMaximizing {
+        bestScore := -1000
+        for row := 0; row < 3; row++ {
+            for col := 0; col < 3; col++ {
+                if board[row][col] == "" {
+                    board[row][col] = agentSymbol
+                    score := minimax(board, depth+1, false, agentSymbol, opponentSymbol)
+                    board[row][col] = ""
+                    bestScore = max(bestScore, score)
+                }
+            }
+        }
+        return bestScore
+    } else {
+        bestScore := 1000
+        for row := 0; row < 3; row++ {
+            for col := 0; col < 3; col++ {
+                if board[row][col] == "" {
+                    board[row][col] = opponentSymbol
+                    score := minimax(board, depth+1, true, agentSymbol, opponentSymbol)
+                    board[row][col] = ""
+                    bestScore = min(bestScore, score)
+                }
+            }
+        }
+        return bestScore
+    }
+}
+```
+
+#### 5. **Template Rendering**
+HTML templates provide the user interface for the game, including the board and result display:
+```go
+var tmpl = loadTemplate("templates/index.html")
+func loadTemplate(filename string) *template.Template {
+    content, err := os.ReadFile(filename)
+    if err != nil {
+        panic(err)
+    }
+    return template.Must(template.New(filename).Parse(string(content) + "<footer>Created by Mersad</footer>"))
+}
+```
+
+---
+
+### Summary
+This implementation combines multiple strategies to create a versatile Tic-Tac-Toe AI. The use of the Minimax algorithm with Alpha-Beta Pruning ensures optimal play at the Impossible difficulty level, while simpler strategies like random moves and blocking provide variety for less challenging levels.
+
